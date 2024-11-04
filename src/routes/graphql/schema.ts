@@ -83,20 +83,30 @@ UserType = new GraphQLObjectType({
     },
     userSubscribedTo: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(UserType))),
-      resolve: async (parent, args, { prisma, userLoader }) => {
-        if (!parent?.userSubscribedTo) return [];
-        return Promise.all(
-          parent.userSubscribedTo.map((sub) => userLoader.load(sub.authorId)),
-        );
+      resolve: async (parent, _, { prisma, userLoader }) => {
+        if (!parent?.userSubscribedTo) {
+          const subscriptions = await prisma.subscribersOnAuthors.findMany({
+            where: {
+              subscriberId: parent.id
+            }
+          });
+          return Promise.all(subscriptions.map(sub => userLoader.load(sub.authorId)));
+        }
+        return Promise.all(parent.userSubscribedTo.map(sub => userLoader.load(sub.authorId)));
       },
     },
     subscribedToUser: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(UserType))),
-      resolve: async (parent, args, { prisma, userLoader }) => {
-        if (!parent?.subscribedToUser) return [];
-        return Promise.all(
-          parent.subscribedToUser.map((sub) => userLoader.load(sub.subscriberId)),
-        );
+      resolve: async (parent, _, { prisma, userLoader }) => {
+        if (!parent?.subscribedToUser) {
+          const subscribers = await prisma.subscribersOnAuthors.findMany({
+            where: {
+              authorId: parent.id
+            }
+          });
+          return Promise.all(subscribers.map(sub => userLoader.load(sub.subscriberId)));
+        }
+        return Promise.all(parent.subscribedToUser.map(sub => userLoader.load(sub.subscriberId)));
       },
     },
   }),
